@@ -4,6 +4,10 @@ It can be used with tornado ioloop.
 
 Usage example:
 
+    from bitcoinrpc_async.authproxy import AsyncAuthServiceProxy
+    from tornado import gen
+
+
     @gen.coroutine
     def bitcoinrpc(self):
         url = "http://user:password@127.0.0.1:8332"
