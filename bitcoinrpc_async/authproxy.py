@@ -37,15 +37,19 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
+import logging
 import base64
 import json
 import decimal
+from datetime import timedelta
 try:
     import urllib.parse as urlparse
 except ImportError:
     import urlparse
-from tornado import gen
-from tornado.httpclient import AsyncHTTPClient, HTTPRequest
+from tornado import gen, ioloop
+from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
+
+l = logging.getLogger(__name__)
 
 USER_AGENT = "AuthServiceProxy/0.1"
 HTTP_TIMEOUT = 30
@@ -58,8 +62,11 @@ class JSONRPCException(Exception):
 
 
 class AsyncAuthServiceProxy(object):
-    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT):
+    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT,
+                reconnect_timeout=2, reconnect_amount=5):
         self.__service_url = service_url
+        self.__reconnect_timeout = reconnect_timeout
+        self.__reconnect_amount = reconnect_amount or 1
         self.__service_name = service_name
         self.__url = urlparse.urlparse(service_url)
         self.__http_client = AsyncHTTPClient()
@@ -103,7 +110,24 @@ class AsyncAuthServiceProxy(object):
             body=postdata,
             headers=headers)
 
-        response = yield self.__http_client.fetch(req)
+        for i in range(self.__reconnect_amount):
+            try:
+                if i > 0:
+                    l.info("Reconnect try #{0}".format(i+1))
+                response = yield self.__http_client.fetch(req)
+                break
+            except HTTPError:
+                err_msg = 'Failed to connect to {0}:{1}'.format(
+                    self.__url.hostname, self.__url.port)
+                rtm = self.__reconnect_timeout
+                if rtm:
+                    err_msg += ". Waiting {0} seconds.".format(rtm)
+                l.exception(err_msg)
+                if rtm:
+                    io_loop = ioloop.IOLoop.current()
+                    yield gen.Task(io_loop.add_timeout, timedelta(seconds=rtm))
+        else:
+            l.warning("Reconnect tries exceed.")
         response = json.loads(response.body)
 
         if response['error'] is not None:
