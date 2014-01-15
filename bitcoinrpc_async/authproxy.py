@@ -64,6 +64,14 @@ class JSONRPCException(Exception):
 class AsyncAuthServiceProxy(object):
     def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT,
                 reconnect_timeout=2, reconnect_amount=5):
+        """
+        :arg string service_url: Format http://{user}:{password}@{host}:{port}
+        :arg string service_name: TBD
+        :arg string timeout: TBD
+        :arg string reconnect_timeout: TBD
+        :arg string reconnect_amount: TBD
+        """
+
         self.__service_url = service_url
         self.__reconnect_timeout = reconnect_timeout
         self.__reconnect_amount = reconnect_amount or 1
