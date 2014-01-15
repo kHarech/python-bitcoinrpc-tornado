@@ -1,5 +1,8 @@
 
 """
+  Copyright 2014 Alexey Evseev
+
+  Previous copyright, from python-bitcoinrpc
   Copyright 2011 Jeff Garzik
 
   AuthServiceProxy has the following improvements over python-jsonrpc's
@@ -34,10 +37,6 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-try:
-    import http.client as httplib
-except ImportError:
-    import httplib
 import base64
 import json
 import decimal
@@ -45,9 +44,10 @@ try:
     import urllib.parse as urlparse
 except ImportError:
     import urlparse
+from tornado import gen
+from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
 USER_AGENT = "AuthServiceProxy/0.1"
-
 HTTP_TIMEOUT = 30
 
 
@@ -57,15 +57,12 @@ class JSONRPCException(Exception):
         self.error = rpc_error
 
 
-class AuthServiceProxy(object):
-    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None):
+class AsyncAuthServiceProxy(object):
+    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT):
         self.__service_url = service_url
         self.__service_name = service_name
         self.__url = urlparse.urlparse(service_url)
-        if self.__url.port is None:
-            port = 80
-        else:
-            port = self.__url.port
+        self.__http_client = AsyncHTTPClient()
         self.__id_count = 0
         (user, passwd) = (self.__url.username, self.__url.password)
         try:
@@ -78,17 +75,6 @@ class AuthServiceProxy(object):
             pass
         authpair = user + b':' + passwd
         self.__auth_header = b'Basic ' + base64.b64encode(authpair)
-        
-        if connection: 
-            # Callables re-use the connection of the original proxy 
-            self.__conn = connection
-        elif self.__url.scheme == 'https':
-            self.__conn = httplib.HTTPSConnection(self.__url.hostname, port,
-                                                  None, None, False,
-                                                  timeout)
-        else:
-            self.__conn = httplib.HTTPConnection(self.__url.hostname, port,
-                                                 False, timeout)
 
     def __getattr__(self, name):
         if name.startswith('__') and name.endswith('__'):
@@ -96,8 +82,9 @@ class AuthServiceProxy(object):
             raise AttributeError
         if self.__service_name is not None:
             name = "%s.%s" % (self.__service_name, name)
-        return AuthServiceProxy(self.__service_url, name, connection=self.__conn)
+        return AsyncAuthServiceProxy(self.__service_url, name)
 
+    @gen.coroutine
     def __call__(self, *args):
         self.__id_count += 1
 
@@ -105,36 +92,48 @@ class AuthServiceProxy(object):
                                'method': self.__service_name,
                                'params': args,
                                'id': self.__id_count})
-        self.__conn.request('POST', self.__url.path, postdata,
-                            {'Host': self.__url.hostname,
-                             'User-Agent': USER_AGENT,
-                             'Authorization': self.__auth_header,
-                             'Content-type': 'application/json'})
+        headers = {
+            'Host': self.__url.hostname,
+            'User-Agent': USER_AGENT,
+            'Authorization': self.__auth_header,
+            'Content-type': 'application/json'
+        }
 
-        response = self._get_response()
+        req = HTTPRequest(url=self.__service_url, method="POST",
+            body=postdata,
+            headers=headers)
+
+        response = yield self.__http_client.fetch(req)
+        response = json.loads(response.body)
+
         if response['error'] is not None:
             raise JSONRPCException(response['error'])
         elif 'result' not in response:
             raise JSONRPCException({
                 'code': -343, 'message': 'missing JSON-RPC result'})
         else:
-            return response['result']
+            raise gen.Return(response['result'])
 
-    def _batch(self, rpc_call_list):
-        postdata = json.dumps(list(rpc_call_list))
-        self.__conn.request('POST', self.__url.path, postdata,
-                            {'Host': self.__url.hostname,
-                             'User-Agent': USER_AGENT,
-                             'Authorization': self.__auth_header,
-                             'Content-type': 'application/json'})
+    # def _batch(self, rpc_call_list):
+    #     postdata = json.dumps(list(rpc_call_list))
+    #     self.__conn.request('POST', self.__url.path, postdata,
+    #                         {'Host': self.__url.hostname,
+    #                          'User-Agent': USER_AGENT,
+    #                          'Authorization': self.__auth_header,
+    #                          'Content-type': 'application/json'})
 
-        return self._get_response()
+    #     return self._get_response()
 
-    def _get_response(self):
-        http_response = self.__conn.getresponse()
-        if http_response is None:
-            raise JSONRPCException({
-                'code': -342, 'message': 'missing HTTP response from server'})
+    # def _get_response(self):
+    #     for i in range(10):
+    #         try:
+    #             http_response = self.__conn.getresponse()
+    #             break
+    #         except socket.error:
+    #             l.exception("Got error")
+    #     if http_response is None:
+    #         raise JSONRPCException({
+    #             'code': -342, 'message': 'missing HTTP response from server'})
 
-        return json.loads(http_response.read().decode('utf8'),
-                          parse_float=decimal.Decimal)
+    #     return json.loads(http_response.read().decode('utf8'),
+    #                       parse_float=decimal.Decimal)
