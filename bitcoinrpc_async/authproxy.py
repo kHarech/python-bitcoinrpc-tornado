@@ -145,13 +145,3 @@ class AsyncAuthServiceProxy(object):
                 'code': -343, 'message': 'missing JSON-RPC result'})
         else:
             raise gen.Return(response['result'])
-
-    # def _batch(self, rpc_call_list):
-    #     postdata = json.dumps(list(rpc_call_list))
-    #     self.__conn.request('POST', self.__url.path, postdata,
-    #                         {'Host': self.__url.hostname,
-    #                          'User-Agent': USER_AGENT,
-    #                          'Authorization': self.__auth_header,
-    #                          'Content-type': 'application/json'})
-
-    #     return self._get_response()
