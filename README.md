@@ -1,8 +1,12 @@
+Async python BitcoinRPC for tornado
+===================================
+
 AsyncAuthServiceProxy is async version of AuthServiceProxy.
 
 It can be used with tornado ioloop.
 
-Usage example:
+Usage example
+-------------
 
     from bitcoinrpc_async.authproxy import AsyncAuthServiceProxy
     from tornado import gen
@@ -14,6 +18,16 @@ Usage example:
         service = AsyncAuthServiceProxy(url)
         result = yield service.getblockcount()
         print result
+
+Install
+-------
+
+    # clone this repo, and run
+    python setup.py install
+
+Or using pip:
+
+    pip install -e git://github.com/st4lk/python-bitcoinrpc-tornado.git#egg=bitcoinrpc_async_dev
 
 
 AuthServiceProxy is an improved version of python-jsonrpc.
