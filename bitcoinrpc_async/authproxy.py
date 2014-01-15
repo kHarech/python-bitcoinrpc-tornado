@@ -136,7 +136,7 @@ class AsyncAuthServiceProxy(object):
                     yield gen.Task(io_loop.add_timeout, timedelta(seconds=rtm))
         else:
             l.warning("Reconnect tries exceed.")
-        response = json.loads(response.body)
+        response = json.loads(response.body, parse_float=decimal.Decimal)
 
         if response['error'] is not None:
             raise JSONRPCException(response['error'])
@@ -155,17 +155,3 @@ class AsyncAuthServiceProxy(object):
     #                          'Content-type': 'application/json'})
 
     #     return self._get_response()
-
-    # def _get_response(self):
-    #     for i in range(10):
-    #         try:
-    #             http_response = self.__conn.getresponse()
-    #             break
-    #         except socket.error:
-    #             l.exception("Got error")
-    #     if http_response is None:
-    #         raise JSONRPCException({
-    #             'code': -342, 'message': 'missing HTTP response from server'})
-
-    #     return json.loads(http_response.read().decode('utf8'),
-    #                       parse_float=decimal.Decimal)
