@@ -1,3 +1,17 @@
+AsyncAuthServiceProxy is async version of AuthServiceProxy.
+
+It can be used with tornado ioloop.
+
+Usage example:
+
+    @gen.coroutine
+    def bitcoinrpc(self):
+        url = "http://user:password@127.0.0.1:8332"
+        service = AsyncAuthServiceProxy(url)
+        result = yield service.getblockcount()
+        print result
+
+
 AuthServiceProxy is an improved version of python-jsonrpc.
 
 It includes the following generic improvements:
