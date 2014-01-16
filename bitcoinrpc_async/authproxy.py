@@ -63,13 +63,20 @@ class JSONRPCException(Exception):
 
 class AsyncAuthServiceProxy(object):
     def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT,
-                reconnect_timeout=2, reconnect_amount=5):
+                reconnect_timeout=2, reconnect_amount=5, max_clients=10,
+                max_buffer_size=104857600):
         """
-        :arg string service_url: Format http://{user}:{password}@{host}:{port}
-        :arg string service_name: TBD
-        :arg string timeout: TBD
-        :arg string reconnect_timeout: TBD
-        :arg string reconnect_amount: TBD
+        :arg service_url: in format "http://{user}:{password}@{host}:{port}"
+        :arg service_name: TBD
+        :arg timeout: TBD
+        :arg reconnect_timeout: TBD
+        :arg reconnect_amount: TBD
+        :arg int max_clients: max_clients is the number of concurrent
+            requests that can be in progress. Look tornado's docs for
+            SimpleAsyncHTTPClient
+        :arg string max_buffer_size: is the number of bytes that can be
+            read by IOStream. It defaults to 100mb. Look tornado's docs for
+            SimpleAsyncHTTPClient
         """
 
         self.__service_url = service_url
@@ -77,7 +84,8 @@ class AsyncAuthServiceProxy(object):
         self.__reconnect_amount = reconnect_amount or 1
         self.__service_name = service_name
         self.__url = urlparse.urlparse(service_url)
-        self.__http_client = AsyncHTTPClient()
+        self.__http_client = AsyncHTTPClient(max_clients=max_clients,
+            max_buffer_size=max_buffer_size)
         self.__id_count = 0
         (user, passwd) = (self.__url.username, self.__url.password)
         try:
