@@ -129,7 +129,7 @@ class AsyncAuthServiceProxy(object):
         for i in range(self.__reconnect_amount):
             try:
                 if i > 0:
-                    l.info("Reconnect try #{0}".format(i+1))
+                    l.warning("Reconnect try #{0}".format(i+1))
                 response = yield self.__http_client.fetch(req)
                 break
             except HTTPError:
@@ -143,7 +143,8 @@ class AsyncAuthServiceProxy(object):
                     io_loop = ioloop.IOLoop.current()
                     yield gen.Task(io_loop.add_timeout, timedelta(seconds=rtm))
         else:
-            l.warning("Reconnect tries exceed.")
+            l.error("Reconnect tries exceed.")
+            return
         response = json.loads(response.body, parse_float=decimal.Decimal)
 
         if response['error'] is not None:
