@@ -9,15 +9,19 @@ Usage example
 -------------
 
     from bitcoinrpc_async.authproxy import AsyncAuthServiceProxy
-    from tornado import gen
+    from tornado import ioloop, gen
 
+    BITCOIN_RPC_URL = "http://user:password@127.0.0.1:8332"
 
     @gen.coroutine
-    def bitcoinrpc(self):
-        url = "http://user:password@127.0.0.1:8332"
-        service = AsyncAuthServiceProxy(url)
+    def show_block_count():
+        service = AsyncAuthServiceProxy(BITCOIN_RPC_URL)
         result = yield service.getblockcount()
         print result
+
+    io_loop = ioloop.IOLoop.instance()
+    io_loop.add_callback(show_block_count)
+    io_loop.start()
 
 Install
 -------
