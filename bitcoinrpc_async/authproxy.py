@@ -128,6 +128,19 @@ class AsyncAuthServiceProxy(object):
 
         for i in range(self.__reconnect_amount):
             try:
+              if self.__service_name == 'submitblock':
+                
+                # for mining pool check submitblock
+                try:
+                  response = yield self.__http_client.fetch(req)
+                  
+                except HTTPError as e:
+                  if e.code == 404 or e.code == 599:
+                    raise gen.Return(False)
+                  else:
+                    raise gen.Return(True)
+                #end
+                            
                 if i > 0:
                     l.warning("Reconnect try #{0}".format(i+1))
                 response = yield self.__http_client.fetch(req)
